@@ -1,3 +1,5 @@
+import { STRIPE_LINKS, openCheckout } from "./stripeLinks";
+
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -203,24 +205,7 @@ const css = `
   }
 `;
 
-/* Open a Stripe checkout link in a new tab, with a popup-blocker fallback. */
-function openCheckout(url) {
-  if (!url || url.includes("REPLACE")) {
-    console.warn("Stripe payment link not configured:", url);
-    return;
-  }
-  const win = window.open(url, "_blank");
-  if (win) win.opener = null;          // sever access back to this page
-  else window.location.href = url;     // popup blocked → navigate directly
-}
-
 export default function Landing({ onGetStarted }) {
-  const STRIPE_LINKS = {
-    solo:     "https://buy.stripe.com/dRmbJ0cabbUSdIIanq1sQ02",
-    team:     "https://buy.stripe.com/14A6oGeij7EC200dzC1sQ01",
-    business: "https://buy.stripe.com/00w3cu7TVe300VW67a1sQ00",
-  };
-
   return (
     <>
       <style>{css}</style>

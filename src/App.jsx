@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { STRIPE_LINKS as PLANS_LINKS, openCheckout } from "./stripeLinks";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -311,22 +312,6 @@ const css = `
   }
 `;
 
-const PLANS_LINKS = {
-  solo:     "https://buy.stripe.com/dRmbJ0cabbUSdIIanq1sQ02",
-  team:     "https://buy.stripe.com/14A6oGeij7EC200dzC1sQ01",
-  business: "https://buy.stripe.com/00w3cu7TVe300VW67a1sQ00",
-};
-
-/* Open a Stripe checkout link in a new tab, with a popup-blocker fallback. */
-function openCheckout(url) {
-  if (!url || url.includes("REPLACE")) {
-    console.warn("Stripe payment link not configured:", url);
-    return;
-  }
-  const win = window.open(url, "_blank");
-  if (win) win.opener = null;          // sever access back to this page
-  else window.location.href = url;     // popup blocked → navigate directly
-}
 
 const SAMPLE_TRANSCRIPT = `[09:02] Priya: Okay let's get started. So the main thing today — we need to figure out the Q2 launch plan for the dashboard redesign.
 
