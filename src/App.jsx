@@ -56,6 +56,13 @@ const css = `
   .auth-btn:disabled { opacity:.5; cursor:not-allowed; }
   .auth-error { font-size:13px; color:var(--red); margin-top:.75rem; text-align:center; }
   .auth-success { font-size:13px; color:var(--teal); margin-top:.75rem; text-align:center; }
+  .auth-forgot {
+    background:none; border:none; padding:0; margin-top:.5rem; cursor:pointer;
+    font-family:var(--sans); font-size:12px; color:var(--muted); text-align:right;
+    display:block; margin-left:auto; transition:color .15s;
+  }
+  .auth-forgot:hover { color:var(--teal); }
+  .auth-forgot:disabled { opacity:.5; cursor:not-allowed; }
 
   /* APP */
   .app { display:grid; grid-template-rows:56px 1fr; height:100vh; overflow:hidden; }
@@ -423,6 +430,18 @@ function AuthPage({ onAuth }) {
     setLoading(false);
   };
 
+  const handleForgot = async () => {
+    setError(""); setSuccess("");
+    if (!email) { setError("Enter your email above first, then tap “Forgot password?”"); return; }
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    });
+    if (error) setError(error.message);
+    else setSuccess("Password reset link sent — check your email.");
+    setLoading(false);
+  };
+
   return (
     <div className="auth-page">
       <div className="auth-card">
@@ -440,6 +459,9 @@ function AuthPage({ onAuth }) {
           <label className="auth-label">Password</label>
           <input className="auth-input" type="password" placeholder="••••••••" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()} />
         </div>
+        {tab==="login" && (
+          <button type="button" className="auth-forgot" onClick={handleForgot} disabled={loading}>Forgot password?</button>
+        )}
         <button className="auth-btn" onClick={handle} disabled={loading || !email || !password}>
           {loading ? "Please wait…" : tab==="login" ? "Log in" : "Create account"}
         </button>
@@ -450,10 +472,64 @@ function AuthPage({ onAuth }) {
   );
 }
 
+/* ── RESET PASSWORD ── */
+function ResetPasswordPage() {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm]   = useState("");
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState("");
+  const [done, setDone]         = useState(false);
+
+  const handle = async () => {
+    setError("");
+    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
+    if (password !== confirm) { setError("Passwords don't match."); return; }
+    setLoading(true);
+    const { error } = await supabase.auth.updateUser({ password });
+    setLoading(false);
+    if (error) { setError(error.message); return; }
+    await supabase.auth.signOut();
+    setDone(true);
+  };
+
+  const goToLogin = () => { window.location.href = "/"; };
+
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-logo">Brief<em>Loop</em></div>
+        {done ? (
+          <>
+            <div className="auth-sub">Your password has been updated. You can now log in with your new password.</div>
+            <button className="auth-btn" onClick={goToLogin}>Continue to log in</button>
+          </>
+        ) : (
+          <>
+            <div className="auth-sub">Choose a new password for your account.</div>
+            <div className="auth-field">
+              <label className="auth-label">New password</label>
+              <input className="auth-input" type="password" placeholder="••••••••" value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()} />
+            </div>
+            <div className="auth-field">
+              <label className="auth-label">Confirm password</label>
+              <input className="auth-input" type="password" placeholder="••••••••" value={confirm} onChange={e=>setConfirm(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handle()} />
+            </div>
+            <button className="auth-btn" onClick={handle} disabled={loading || !password || !confirm}>
+              {loading ? "Please wait…" : "Update password"}
+            </button>
+            {error && <div className="auth-error">{error}</div>}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ── MAIN APP ── */
 export default function BriefLoop() {
   const [user, setUser]             = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const [recovery, setRecovery]     = useState(() => window.location.pathname === "/reset-password");
   const [meetings, setMeetings]     = useState([]);
   const [active, setActive]         = useState(null);
   const [view, setView]             = useState("empty");
@@ -468,7 +544,8 @@ export default function BriefLoop() {
       setUser(data.session?.user || null);
       setLoadingAuth(false);
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_e, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") setRecovery(true);
       setUser(session?.user || null);
     });
     return () => listener.subscription.unsubscribe();
@@ -563,6 +640,7 @@ export default function BriefLoop() {
     navigator.clipboard.writeText(lines).then(() => setToast({ msg:"Summary copied as Markdown", type:"success" }));
   };
 
+  if (recovery) return <><style>{css}</style><ResetPasswordPage /></>;
   if (loadingAuth) return <div style={{height:"100vh",background:"#0e0f0d"}} />;
   if (!user) return <><style>{css}</style><AuthPage onAuth={setUser} /></>;
 
