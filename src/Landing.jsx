@@ -175,6 +175,32 @@ const css = `
   .footer-links { display:flex; gap:1.5rem; }
   .footer-link { font-size:12px; color:var(--muted); text-decoration:none; cursor:pointer; }
   .footer-copy { font-size:12px; color:var(--muted); }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .nav { padding:0 1.25rem; }
+    .nav-links { display:none; }
+    .nav-cta { padding:7px 14px; }
+
+    .hero { padding:6rem 1.25rem 4rem; }
+    .demo-wrap { padding:0 1.25rem 4rem; }
+    .demo-cols { grid-template-columns:1fr; }
+    .demo-col:first-child { border-right:none; border-bottom:1px solid var(--border); }
+
+    .stats { gap:2.5rem 3rem; padding:3rem 1.25rem; }
+    .section { padding:4rem 1.25rem; }
+    .steps-grid { grid-template-columns:1fr; }
+    .features-grid { grid-template-columns:1fr; }
+    .testimonials-grid { grid-template-columns:1fr; }
+
+    .pricing-section { padding:4rem 1.25rem; }
+    .pricing-grid { grid-template-columns:1fr; }
+
+    .cta-section { padding:5rem 1.25rem; }
+    .footer {
+      flex-direction:column; gap:1rem; text-align:center; padding:2rem 1.25rem;
+    }
+  }
 `;
 
 export default function Landing({ onGetStarted }) {

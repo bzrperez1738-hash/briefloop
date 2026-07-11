@@ -269,6 +269,46 @@ const css = `
   .plan-cta.primary { background:var(--teal); border-color:var(--teal); color:#fff; }
   .plan-cta.primary:hover { opacity:.88; }
   .pricing-note { font-size:12px; color:var(--muted); text-align:center; }
+
+  /* RESPONSIVE */
+  .topbar-left { display:flex; align-items:center; gap:.6rem; }
+  .menu-btn {
+    display:none; align-items:center; justify-content:center; background:none;
+    border:none; color:var(--text); cursor:pointer; padding:4px; margin-left:-4px;
+  }
+  .sidebar-backdrop { display:none; }
+
+  @media (max-width: 768px) {
+    .app { height:100dvh; }
+    .topbar { padding:0 1rem; }
+    .menu-btn { display:flex; }
+    .nav-right { gap:.5rem; }
+    .user-pill { display:none; }
+    .hide-mobile { display:none; }
+    .upgrade-btn { padding:6px 12px; }
+
+    .main { grid-template-columns:1fr; }
+    .sidebar {
+      position:fixed; top:56px; left:0; bottom:0; width:82%; max-width:300px; z-index:50;
+      transform:translateX(-100%); transition:transform .25s ease;
+      border-right:1px solid var(--border2);
+    }
+    .sidebar.open { transform:translateX(0); box-shadow:0 0 40px rgba(0,0,0,.5); }
+    .sidebar-backdrop.show {
+      display:block; position:fixed; inset:56px 0 0 0;
+      background:rgba(0,0,0,.5); z-index:40;
+    }
+
+    .input-panel { padding:1.5rem 1.25rem; gap:1rem; }
+    .input-title { font-size:24px; }
+    .results-panel { padding:1.5rem 1.25rem; }
+    .results-header { flex-direction:column; }
+    .empty-state { padding:2.5rem 1.5rem; }
+    .empty-title { font-size:22px; }
+    .pricing-page { padding:2.5rem 1.25rem; }
+    .pricing-title { font-size:28px; }
+    .pricing-grid { grid-template-columns:1fr; max-width:400px; }
+  }
 `;
 
 const PLANS_LINKS = {
@@ -530,6 +570,7 @@ export default function BriefLoop() {
   const [user, setUser]             = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [recovery, setRecovery]     = useState(() => window.location.pathname === "/reset-password");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [meetings, setMeetings]     = useState([]);
   const [active, setActive]         = useState(null);
   const [view, setView]             = useState("empty");
@@ -566,9 +607,9 @@ export default function BriefLoop() {
 
   const activeData = meetings.find(m => m.id === active) || null;
 
-  const startNew = () => { setActive(null); setTitle(""); setTranscript(""); setView("input"); };
+  const startNew = () => { setActive(null); setTitle(""); setTranscript(""); setView("input"); setSidebarOpen(false); };
   const loadSample = () => { setTitle("Q2 Product Sync"); setTranscript(SAMPLE_TRANSCRIPT); };
-  const selectMeeting = (id) => { setActive(id); setView("results"); };
+  const selectMeeting = (id) => { setActive(id); setView("results"); setSidebarOpen(false); };
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -649,17 +690,25 @@ export default function BriefLoop() {
       <style>{css}</style>
       <div className="app">
         <header className="topbar">
-          <div className="logo" onClick={() => setView("empty")}>Brief<em>Loop</em></div>
+          <div className="topbar-left">
+            <button className="menu-btn" onClick={() => setSidebarOpen(o => !o)} aria-label="Toggle menu">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M3 6h18M3 12h18M3 18h18"/>
+              </svg>
+            </button>
+            <div className="logo" onClick={() => { setView("empty"); setSidebarOpen(false); }}>Brief<em>Loop</em></div>
+          </div>
           <div className="nav-right">
-            <button className="nav-link" onClick={() => setView("pricing")}>Pricing</button>
+            <button className="nav-link hide-mobile" onClick={() => { setView("pricing"); setSidebarOpen(false); }}>Pricing</button>
             <span className="user-pill">{user.email}</span>
             <button className="nav-link" onClick={signOut}>Sign out</button>
-            <button className="upgrade-btn" onClick={() => setView("pricing")}>Upgrade</button>
+            <button className="upgrade-btn" onClick={() => { setView("pricing"); setSidebarOpen(false); }}>Upgrade</button>
           </div>
         </header>
 
         <div className="main">
-          <aside className="sidebar">
+          <div className={`sidebar-backdrop ${sidebarOpen?"show":""}`} onClick={() => setSidebarOpen(false)} />
+          <aside className={`sidebar ${sidebarOpen?"open":""}`}>
             <div className="sidebar-head">
               <button className="new-btn" onClick={startNew}>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
