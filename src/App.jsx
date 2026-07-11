@@ -312,10 +312,21 @@ const css = `
 `;
 
 const PLANS_LINKS = {
-  solo:     "https://buy.stripe.com/test_REPLACE_SOLO",
-  team:     "https://buy.stripe.com/test_REPLACE_TEAM",
-  business: "https://buy.stripe.com/test_REPLACE_BUSINESS",
+  solo:     "https://buy.stripe.com/dRmbJ0cabbUSdIIanq1sQ02",
+  team:     "https://buy.stripe.com/14A6oGeij7EC200dzC1sQ01",
+  business: "https://buy.stripe.com/00w3cu7TVe300VW67a1sQ00",
 };
+
+/* Open a Stripe checkout link in a new tab, with a popup-blocker fallback. */
+function openCheckout(url) {
+  if (!url || url.includes("REPLACE")) {
+    console.warn("Stripe payment link not configured:", url);
+    return;
+  }
+  const win = window.open(url, "_blank");
+  if (win) win.opener = null;          // sever access back to this page
+  else window.location.href = url;     // popup blocked → navigate directly
+}
 
 const SAMPLE_TRANSCRIPT = `[09:02] Priya: Okay let's get started. So the main thing today — we need to figure out the Q2 launch plan for the dashboard redesign.
 
@@ -416,7 +427,7 @@ function PricingPage() {
               <div key={f} className="plan-feature"><span className="feature-check">✓</span>{f}</div>
             ))}
           </div>
-          <button className="plan-cta" onClick={() => window.open(PLANS_LINKS.solo,"_blank")}>Get started</button>
+          <button className="plan-cta" onClick={() => openCheckout(PLANS_LINKS.solo)}>Get started</button>
         </div>
         <div className="plan-card featured">
           <div className="featured-badge">Most popular</div>
@@ -428,7 +439,7 @@ function PricingPage() {
               <div key={f} className="plan-feature"><span className="feature-check">✓</span>{f}</div>
             ))}
           </div>
-          <button className="plan-cta primary" onClick={() => window.open(PLANS_LINKS.team,"_blank")}>Get started</button>
+          <button className="plan-cta primary" onClick={() => openCheckout(PLANS_LINKS.team)}>Get started</button>
         </div>
         <div className="plan-card">
           <div className="plan-name">Business</div>
@@ -439,7 +450,7 @@ function PricingPage() {
               <div key={f} className="plan-feature"><span className="feature-check">✓</span>{f}</div>
             ))}
           </div>
-          <button className="plan-cta" onClick={() => window.open(PLANS_LINKS.business,"_blank")}>Get started</button>
+          <button className="plan-cta" onClick={() => openCheckout(PLANS_LINKS.business)}>Get started</button>
         </div>
       </div>
       <div className="pricing-note">All plans include a 14-day free trial. No credit card required to start.</div>
