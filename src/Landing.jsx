@@ -205,7 +205,7 @@ const css = `
   }
 `;
 
-export default function Landing({ onGetStarted }) {
+export default function Landing({ onGetStarted, onNav }) {
   return (
     <>
       <style>{css}</style>
