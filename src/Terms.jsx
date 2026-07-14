@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 export default function Terms({ onHome }) {
   const css = `
     
@@ -14,6 +15,7 @@ export default function Terms({ onHome }) {
     .doc p { font-size:14px; color:var(--muted); line-height:1.8; margin-bottom:1rem; }
     .doc a { color:var(--teal); }
   `;
+  useEffect(() => { window.scrollTo(0, 0); }, []);
   return (
     <>
       <style>{css}</style>

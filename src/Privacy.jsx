@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 export default function Privacy({ onHome }) {
   const css = `
     
@@ -14,6 +15,7 @@ export default function Privacy({ onHome }) {
     .doc p { font-size:14px; color:var(--muted); line-height:1.8; margin-bottom:1rem; }
     .doc a { color:var(--teal); }
   `;
+  useEffect(() => { window.scrollTo(0, 0); }, []);
   return (
     <>
       <style>{css}</style>
@@ -34,7 +36,7 @@ export default function Privacy({ onHome }) {
         <h2>6. Security</h2>
         <p>All data is encrypted in transit (HTTPS) and at rest. We take reasonable measures to protect your information.</p>
         <h2>7. Contact</h2>
-        <p>Questions? Email privacy@getbriefloop.com</p>
+        <p>Questions? Email <a href="mailto:privacy@getbriefloop.com">privacy@getbriefloop.com</a></p>
       </div>
     </>
   );
