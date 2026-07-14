@@ -1,6 +1,6 @@
 export default function Privacy({ onHome }) {
   const css = `
-    @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap');
+    
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root { --bg:#0e0f0d; --border:rgba(255,255,255,0.07); --text:#e8e6df; --muted:#7a7870; --teal:#1D9E75; --serif:'DM Serif Display',Georgia,serif; --sans:'DM Sans',system-ui,sans-serif; }
     html, body { background:var(--bg); color:var(--text); font-family:var(--sans); }

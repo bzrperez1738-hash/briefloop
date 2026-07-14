@@ -1,7 +1,7 @@
 import { STRIPE_LINKS, openCheckout } from "./stripeLinks";
 
 const css = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap');
+  
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
     --bg:#0e0f0d; --bg2:#161714; --bg3:#1e1f1c;
