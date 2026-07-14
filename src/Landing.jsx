@@ -408,8 +408,8 @@ export default function Landing({ onGetStarted }) {
       <footer className="footer">
         <div className="footer-logo">Brief<em>Loop</em></div>
         <div className="footer-links">
-          <a className="footer-link" href="/privacy">Privacy</a>
-          <a className="footer-link" href="/terms">Terms</a>
+          <a className="footer-link" onClick={() => onNav("privacy")} style={{cursor:"pointer"}}>Privacy</a>
+          <a className="footer-link" onClick={() => onNav("terms")} style={{cursor:"pointer"}}>Terms</a>
         </div>
         <div className="footer-copy">© 2026 BriefLoop. All rights reserved.</div>
       </footer>
