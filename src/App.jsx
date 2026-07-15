@@ -1,7 +1,4 @@
 import { useState, useCallback, useEffect } from "react";
-import Landing from "./Landing";
-import Privacy from "./Privacy";
-import Terms from "./Terms";
 import { createClient } from "@supabase/supabase-js";
 import { STRIPE_LINKS as PLANS_LINKS, openCheckout } from "./stripeLinks";
 
@@ -10,8 +7,10 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
+const FREE_MEETING_LIMIT = 10;
+
 const css = `
-  
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
     --bg:#0e0f0d; --bg2:#161714; --bg3:#1e1f1c;
@@ -250,6 +249,28 @@ const css = `
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:4px; }
 
+  /* PAYWALL */
+  .paywall {
+    flex:1; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:1rem; padding:3rem; text-align:center;
+  }
+  .paywall-icon { font-size:40px; margin-bottom:.5rem; }
+  .paywall-title { font-family:var(--serif); font-size:28px; letter-spacing:-.3px; }
+  .paywall-title em { color:var(--teal); font-style:italic; }
+  .paywall-sub { font-size:15px; color:var(--muted); max-width:400px; line-height:1.6; margin-bottom:.5rem; }
+  .paywall-plans { display:grid; grid-template-columns:1fr 1fr; gap:12px; width:100%; max-width:500px; margin:1rem 0; }
+  .paywall-plan {
+    background:var(--bg2); border:1px solid var(--border2); border-radius:var(--radius-lg);
+    padding:1.25rem; cursor:pointer; transition:border-color .15s; text-align:left;
+  }
+  .paywall-plan:hover { border-color:var(--border2); background:var(--bg3); }
+  .paywall-plan.featured { border:2px solid var(--teal); }
+  .paywall-plan-name { font-size:11px; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin-bottom:6px; }
+  .paywall-plan-price { font-family:var(--serif); font-size:28px; line-height:1; margin-bottom:4px; }
+  .paywall-plan-price sub { font-family:var(--sans); font-size:12px; color:var(--muted); }
+  .paywall-plan-desc { font-size:12px; color:var(--muted); line-height:1.4; }
+  .paywall-note { font-size:12px; color:var(--muted); }
+
   /* PRICING */
   .pricing-page { flex:1; overflow-y:auto; padding:3rem 2.5rem; display:flex; flex-direction:column; align-items:center; gap:2.5rem; }
   .pricing-title { font-family:var(--serif); font-size:36px; letter-spacing:-.5px; margin-bottom:.5rem; text-align:center; }
@@ -431,7 +452,7 @@ function PricingPage() {
         </div>
         <div className="plan-card">
           <div className="plan-name">Business</div>
-          <div className="plan-price"><sup>$</sup>299<sub>/mo</sub></div>
+          <div className="plan-price"><sup>$</sup>149<sub>/mo</sub></div>
           <div className="plan-desc">For larger orgs with custom needs</div>
           <div className="plan-features">
             {["Everything in Team","Custom integrations","SSO + admin controls","Dedicated onboarding","SLA guarantee"].map(f=>(
@@ -564,12 +585,33 @@ function ResetPasswordPage() {
   );
 }
 
+function PaywallPage() {
+  return (
+    <div className="paywall">
+      <div className="paywall-icon">🔒</div>
+      <div className="paywall-title">You've used your <em>10 free</em> meetings</div>
+      <div className="paywall-sub">You've gotten a feel for BriefLoop. Ready to stop losing action items for good? Pick a plan and keep going.</div>
+      <div className="paywall-plans">
+        <div className="paywall-plan" onClick={() => openCheckout(PLANS_LINKS.solo)}>
+          <div className="paywall-plan-name">Solo</div>
+          <div className="paywall-plan-price">$19<sub>/mo</sub></div>
+          <div className="paywall-plan-desc">30 meetings/month. Perfect for freelancers.</div>
+        </div>
+        <div className="paywall-plan featured" onClick={() => openCheckout(PLANS_LINKS.team)}>
+          <div className="paywall-plan-name">⭐ Team — Most popular</div>
+          <div className="paywall-plan-price">$99<sub>/mo</sub></div>
+          <div className="paywall-plan-desc">Unlimited meetings. Notion + Slack sync. Up to 10 people.</div>
+        </div>
+      </div>
+      <div className="paywall-note">Questions? Email us at hello@getbriefloop.com</div>
+    </div>
+  );
+}
+
 /* ── MAIN APP ── */
 export default function BriefLoop() {
   const [user, setUser]             = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
-  const [showAuth, setShowAuth] = useState(false);
-  const [page, setPage] = useState("home");
   const [recovery, setRecovery]     = useState(() => window.location.pathname === "/reset-password");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [meetings, setMeetings]     = useState([]);
@@ -619,6 +661,13 @@ export default function BriefLoop() {
 
   const process = useCallback(async () => {
     if (!transcript.trim()) return;
+
+    // Check free meeting limit
+    if (meetings.length >= FREE_MEETING_LIMIT) {
+      setView("paywall");
+      return;
+    }
+
     setView("processing"); setProcStep(0);
     const stepInterval = setInterval(() => setProcStep(s => Math.min(s+1, PROC_STEPS.length-1)), 600);
     try {
@@ -684,10 +733,7 @@ export default function BriefLoop() {
 
   if (recovery) return <><style>{css}</style><ResetPasswordPage /></>;
   if (loadingAuth) return <div style={{height:"100vh",background:"#0e0f0d"}} />;
-  if (page === "privacy") return <Privacy onHome={() => setPage("home")} />;
-  if (page === "terms")   return <Terms   onHome={() => setPage("home")} />;
-  if (!user && !showAuth) return <Landing onGetStarted={() => setShowAuth(true)} onNav={setPage} />;
-  if (!user && showAuth) return <><style>{css}</style><AuthPage onAuth={setUser} /></>;
+  if (!user) return <><style>{css}</style><AuthPage onAuth={setUser} /></>;
 
   return (
     <>
@@ -739,6 +785,11 @@ export default function BriefLoop() {
                   <div className="stat"><strong>{meetings.length}</strong> meetings</div>
                   <div className="stat"><strong>{meetings.reduce((n,m)=>n+(m.actionItems?.length||0),0)}</strong> tasks</div>
                 </div>
+                {meetings.length < FREE_MEETING_LIMIT && (
+                  <div style={{padding:".5rem 1.25rem .75rem",fontSize:"11px",color:"var(--muted)"}}>
+                    <span style={{color:"var(--teal)",fontWeight:500}}>{FREE_MEETING_LIMIT - meetings.length}</span> free meetings left
+                  </div>
+                )}
               </>
             )}
           </aside>
@@ -758,6 +809,7 @@ export default function BriefLoop() {
             )}
 
             {view==="pricing" && <PricingPage />}
+            {view==="paywall" && <PaywallPage />}
 
             {view==="input" && (
               <div className="input-panel">
