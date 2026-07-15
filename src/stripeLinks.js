@@ -2,7 +2,7 @@
 export const STRIPE_LINKS = {
   solo:     "https://buy.stripe.com/dRmbJ0cabbUSdIIanq1sQ02",
   team:     "https://buy.stripe.com/14A6oGeij7EC200dzC1sQ01",
-  business: "https://buy.stripe.com/00w3cu7TVe300VW67a1sQ00",
+  business: "https://buy.stripe.com/6oU7sKeij5wuaww7be1sQ03",
 };
 
 /* Open a Stripe checkout link in a new tab, with a popup-blocker fallback. */
