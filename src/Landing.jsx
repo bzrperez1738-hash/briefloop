@@ -382,7 +382,7 @@ export default function Landing({ onGetStarted, onNav }) {
             </div>
             <div className="plan-card">
               <div className="plan-name">Business</div>
-              <div className="plan-price"><sup>$</sup>299<sub>/mo</sub></div>
+              <div className="plan-price"><sup>$</sup>149<sub>/mo</sub></div>
               <div className="plan-desc">For larger orgs with custom needs</div>
               <div className="plan-features">
                 {["Everything in Team","Custom integrations","SSO + admin controls","Dedicated onboarding","SLA guarantee"].map(f=>(
