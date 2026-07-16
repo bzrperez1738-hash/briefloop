@@ -1,4 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
+import Landing from "./Landing";
+import Privacy from "./Privacy";
+import Terms from "./Terms";
 import { createClient } from "@supabase/supabase-js";
 import { STRIPE_LINKS as PLANS_LINKS, openCheckout } from "./stripeLinks";
 
@@ -612,6 +615,8 @@ function PaywallPage() {
 export default function BriefLoop() {
   const [user, setUser]             = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const [showAuth, setShowAuth] = useState(false);
+  const [page, setPage] = useState("home");
   const [recovery, setRecovery]     = useState(() => window.location.pathname === "/reset-password");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [meetings, setMeetings]     = useState([]);
@@ -733,7 +738,10 @@ export default function BriefLoop() {
 
   if (recovery) return <><style>{css}</style><ResetPasswordPage /></>;
   if (loadingAuth) return <div style={{height:"100vh",background:"#0e0f0d"}} />;
-  if (!user) return <><style>{css}</style><AuthPage onAuth={setUser} /></>;
+  if (page === "privacy") return <Privacy onHome={() => setPage("home")} />;
+  if (page === "terms")   return <Terms   onHome={() => setPage("home")} />;
+  if (!user && !showAuth) return <Landing onGetStarted={() => setShowAuth(true)} onNav={setPage} />;
+  if (!user && showAuth) return <><style>{css}</style><AuthPage onAuth={setUser} /></>;
 
   return (
     <>
