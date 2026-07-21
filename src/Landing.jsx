@@ -11,7 +11,7 @@ const css = `
     --serif:'DM Serif Display',Georgia,serif; --sans:'DM Sans',system-ui,sans-serif;
     --radius:10px; --radius-lg:16px;
   }
-  html, body { background:var(--bg); color:var(--text); font-family:var(--sans); scroll-behavior:smooth; }
+  html, body { background:var(--bg); color:var(--text); font-family:var(--sans); scroll-behavior:smooth; margin:0; padding:0; width:100%; }
 
   /* NAV */
   .nav {
