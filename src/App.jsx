@@ -1,7 +1,4 @@
 import { useState, useCallback, useEffect } from "react";
-import Landing from "./Landing";
-import Privacy from "./Privacy";
-import Terms from "./Terms";
 import { createClient } from "@supabase/supabase-js";
 import { STRIPE_LINKS as PLANS_LINKS, openCheckout } from "./stripeLinks";
 
@@ -251,6 +248,49 @@ const css = `
   ::-webkit-scrollbar { width:4px; }
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:4px; }
+  /* FILE UPLOAD */
+  .upload-zone {
+    border:2px dashed var(--border2); border-radius:var(--radius); padding:2rem;
+    text-align:center; cursor:pointer; transition:border-color .15s, background .15s;
+    margin-top:.5rem;
+  }
+  .upload-zone:hover, .upload-zone.dragover { border-color:var(--teal); background:var(--teal-dim); }
+  .upload-icon { font-size:28px; margin-bottom:.5rem; }
+  .upload-text { font-size:13px; color:var(--muted); line-height:1.5; }
+  .upload-text strong { color:var(--teal); }
+  .upload-input { display:none; }
+
+  /* INPUT TABS */
+  .input-tabs { display:flex; gap:8px; margin-bottom:-.5rem; }
+  .input-tab {
+    padding:6px 16px; border-radius:100px; font-size:12px; font-weight:500;
+    border:1px solid var(--border2); background:transparent; color:var(--muted);
+    cursor:pointer; font-family:var(--sans); transition:all .15s;
+  }
+  .input-tab.active { background:var(--teal-dim); border-color:var(--teal-glow); color:var(--teal); }
+
+  /* REMINDERS */
+  .reminder-card { background:var(--bg2); border:1px solid var(--teal-glow); border-radius:var(--radius-lg); padding:1.25rem; }
+  .reminder-title { font-size:13px; font-weight:500; color:var(--text); margin-bottom:.4rem; }
+  .reminder-sub { font-size:12px; color:var(--muted); margin-bottom:1rem; line-height:1.5; }
+  .reminder-tasks { display:flex; flex-direction:column; gap:6px; margin-bottom:1rem; }
+  .reminder-task { display:flex; align-items:center; gap:8px; font-size:12.5px; }
+  .reminder-task input[type=email] {
+    flex:1; padding:5px 10px; background:var(--bg3); border:1px solid var(--border2);
+    border-radius:var(--radius); color:var(--text); font-family:var(--sans); font-size:12px;
+    outline:none; transition:border-color .15s;
+  }
+  .reminder-task input[type=email]:focus { border-color:var(--teal); }
+  .reminder-task input[type=email]::placeholder { color:var(--muted); }
+  .reminder-task-label { font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
+  .reminder-btn {
+    width:100%; padding:8px; border-radius:var(--radius); background:var(--teal);
+    color:#fff; font-size:13px; font-weight:500; border:none; cursor:pointer;
+    font-family:var(--sans); transition:opacity .15s;
+  }
+  .reminder-btn:hover { opacity:.88; }
+  .reminder-btn:disabled { opacity:.5; cursor:not-allowed; }
+
 
   /* PAYWALL */
   .paywall {
@@ -380,6 +420,42 @@ const PROC_STEPS = ["Reading transcript","Identifying speakers","Extracting acti
 
 function formatDate() {
   return new Date().toLocaleDateString("en-US", { month:"short", day:"numeric", year:"numeric" });
+}
+
+
+/* ── VTT/SRT TRANSCRIPT PARSER ── */
+function parseTranscriptFile(text, filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  
+  if (ext === 'vtt') {
+    // Parse WebVTT (Zoom, Google Meet)
+    const lines = text.split('\n');
+    const result = [];
+    let current = '';
+    for (const line of lines) {
+      if (line.includes('-->')) continue;
+      if (line.trim() === '' || line.match(/^\d+$/) || line === 'WEBVTT') {
+        if (current.trim()) result.push(current.trim());
+        current = '';
+      } else {
+        current += (current ? ' ' : '') + line.trim();
+      }
+    }
+    if (current.trim()) result.push(current.trim());
+    return result.join('\n');
+  }
+  
+  if (ext === 'srt') {
+    // Parse SRT subtitles
+    return text
+      .replace(/\d+\n/g, '')
+      .replace(/\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}/g, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+  
+  // Plain text - return as-is
+  return text;
 }
 
 function TaskItem({ task }) {
@@ -615,8 +691,6 @@ function PaywallPage() {
 export default function BriefLoop() {
   const [user, setUser]             = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
-  const [showAuth, setShowAuth] = useState(false);
-  const [page, setPage] = useState("home");
   const [recovery, setRecovery]     = useState(() => window.location.pathname === "/reset-password");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [meetings, setMeetings]     = useState([]);
@@ -626,6 +700,11 @@ export default function BriefLoop() {
   const [toast, setToast]           = useState(null);
   const [title, setTitle]           = useState("");
   const [transcript, setTranscript] = useState("");
+  const [inputTab, setInputTab]     = useState("paste");
+  const [dragover, setDragover]     = useState(false);
+  const [reminderEmails, setReminderEmails] = useState({});
+  const [reminderSent, setReminderSent]     = useState(false);
+  const [reminderLoading, setReminderLoading] = useState(false);
 
   /* Check if already logged in */
   useEffect(() => {
@@ -662,6 +741,58 @@ export default function BriefLoop() {
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null); setMeetings([]); setActive(null); setView("empty");
+  };
+
+  const handleFileUpload = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const parsed = parseTranscriptFile(e.target.result, file.name);
+      setTranscript(parsed);
+      if (!title) setTitle(file.name.replace(/\.(vtt|srt|txt)$/i, '').replace(/_/g, ' '));
+    };
+    reader.readAsText(file);
+  };
+
+  const sendReminders = async () => {
+    if (!activeData?.actionItems) return;
+    setReminderLoading(true);
+    // Build reminder messages for each task with an email
+    const tasks = activeData.actionItems.filter(t => reminderEmails[t.id]);
+    // Use Claude to draft personalized reminder emails
+    const reminderList = tasks.map(t =>
+      `Task: "${t.title}" → Owner email: ${reminderEmails[t.id]}${t.deadline ? ` → Due: ${t.deadline}` : ''}`
+    ).join('\n');
+
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": import.meta.env.VITE_ANTHROPIC_KEY,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 500,
+          messages: [{ role:"user", content:`Generate short, friendly reminder email bodies (2-3 sentences each) for these action items from meeting "${activeData.title}":\n${reminderList}\n\nReturn JSON array: [{"email":"...","subject":"...","body":"..."}]` }],
+        }),
+      });
+      const data = await response.json();
+      const raw = data.content?.map(b=>b.text||"").join("")||"";
+      const reminders = JSON.parse(raw.replace(/\`\`\`json|\`\`\`/g,"").trim());
+      // Open mailto links for each reminder
+      reminders.forEach((r, i) => {
+        setTimeout(() => {
+          window.open(`mailto:${r.email}?subject=${encodeURIComponent(r.subject)}&body=${encodeURIComponent(r.body)}`, '_blank');
+        }, i * 500);
+      });
+      setReminderSent(true);
+      setToast({ msg:`${reminders.length} reminder${reminders.length>1?'s':''} drafted!`, type:"success" });
+    } catch(err) {
+      setToast({ msg:"Failed to draft reminders", type:"error" });
+    }
+    setReminderLoading(false);
   };
 
   const process = useCallback(async () => {
@@ -738,10 +869,7 @@ export default function BriefLoop() {
 
   if (recovery) return <><style>{css}</style><ResetPasswordPage /></>;
   if (loadingAuth) return <div style={{height:"100vh",background:"#0e0f0d"}} />;
-  if (page === "privacy") return <Privacy onHome={() => setPage("home")} />;
-  if (page === "terms")   return <Terms   onHome={() => setPage("home")} />;
-  if (!user && !showAuth) return <Landing onGetStarted={() => setShowAuth(true)} onNav={setPage} />;
-  if (!user && showAuth) return <><style>{css}</style><AuthPage onAuth={setUser} /></>;
+  if (!user) return <><style>{css}</style><AuthPage onAuth={setUser} /></>;
 
   return (
     <>
@@ -827,11 +955,39 @@ export default function BriefLoop() {
                   <input className="text-input" placeholder="e.g. Q2 product sync, Sprint retro…" value={title} onChange={e=>setTitle(e.target.value)} />
                 </div>
                 <div>
-                  <div className="field-label">Transcript or notes</div>
-                  <div className="textarea-wrap">
-                    <textarea className="transcript-area" placeholder="Paste your meeting transcript here…" value={transcript} onChange={e=>setTranscript(e.target.value)} />
-                    {!transcript && <button className="sample-btn" onClick={loadSample}>Load sample</button>}
+                  <div className="input-tabs">
+                    <button className={`input-tab ${inputTab==="paste"?"active":""}`} onClick={() => setInputTab("paste")}>Paste transcript</button>
+                    <button className={`input-tab ${inputTab==="upload"?"active":""}`} onClick={() => setInputTab("upload")}>Upload file</button>
                   </div>
+                  <div className="field-label" style={{marginTop:"1rem"}}>
+                    {inputTab==="paste" ? "Transcript or notes" : "Upload .vtt, .srt, or .txt file"}
+                  </div>
+                  {inputTab==="paste" ? (
+                    <div className="textarea-wrap">
+                      <textarea className="transcript-area" placeholder="Paste your Zoom, Google Meet, or Teams transcript here…" value={transcript} onChange={e=>setTranscript(e.target.value)} />
+                      {!transcript && <button className="sample-btn" onClick={loadSample}>Load sample</button>}
+                    </div>
+                  ) : (
+                    <div
+                      className={`upload-zone ${dragover?"dragover":""}`}
+                      onClick={() => document.getElementById("file-upload").click()}
+                      onDragOver={e => { e.preventDefault(); setDragover(true); }}
+                      onDragLeave={() => setDragover(false)}
+                      onDrop={e => {
+                        e.preventDefault(); setDragover(false);
+                        const file = e.dataTransfer.files[0];
+                        if (file) handleFileUpload(file);
+                      }}
+                    >
+                      <input id="file-upload" className="upload-input" type="file" accept=".vtt,.srt,.txt" onChange={e => e.target.files[0] && handleFileUpload(e.target.files[0])} />
+                      <div className="upload-icon">📄</div>
+                      <div className="upload-text">
+                        <strong>Click to upload</strong> or drag and drop<br/>
+                        Zoom .vtt · Google Meet .vtt · Teams .txt · Any .srt
+                      </div>
+                      {transcript && <div style={{marginTop:"1rem",fontSize:"12px",color:"var(--teal)"}}>✓ File loaded — {transcript.split("\n").length} lines</div>}
+                    </div>
+                  )}
                 </div>
                 <button className="process-btn" onClick={process} disabled={!transcript.trim()}>
                   Process meeting →
@@ -885,7 +1041,38 @@ export default function BriefLoop() {
                     </div>
                   </div>
                 )}
-                <button className="action-btn" style={{alignSelf:"flex-start",marginTop:".5rem"}} onClick={startNew}>
+                {activeData.actionItems?.some(t => t.owner) && !reminderSent && (
+                  <div className="reminder-card">
+                    <div className="reminder-title">📧 Send accountability reminders</div>
+                    <div className="reminder-sub">Enter email addresses for action item owners and BriefLoop will draft personalized reminder emails for each one.</div>
+                    <div className="reminder-tasks">
+                      {(activeData.actionItems||[]).filter(t => t.owner).map(task => (
+                        <div key={task.id} className="reminder-task">
+                          <span className="reminder-task-label">{task.owner}</span>
+                          <input
+                            type="email"
+                            placeholder={`${task.owner?.toLowerCase().replace(' ','')}@company.com`}
+                            value={reminderEmails[task.id]||""}
+                            onChange={e => setReminderEmails(prev => ({...prev, [task.id]: e.target.value}))}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      className="reminder-btn"
+                      onClick={sendReminders}
+                      disabled={reminderLoading || !Object.values(reminderEmails).some(e => e.trim())}
+                    >
+                      {reminderLoading ? "Drafting reminders…" : "Draft reminder emails →"}
+                    </button>
+                  </div>
+                )}
+                {reminderSent && (
+                  <div style={{fontSize:"13px",color:"var(--teal)",padding:".75rem 1rem",background:"var(--teal-dim)",borderRadius:"var(--radius)",border:"1px solid var(--teal-glow)"}}>
+                    ✓ Reminder emails drafted and opened in your email client!
+                  </div>
+                )}
+                <button className="action-btn" style={{alignSelf:"flex-start",marginTop:".5rem"}} onClick={() => { startNew(); setReminderEmails({}); setReminderSent(false); }}>
                   + Process another meeting
                 </button>
               </div>
