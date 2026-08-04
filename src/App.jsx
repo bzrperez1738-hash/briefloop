@@ -764,16 +764,22 @@ export default function BriefLoop() {
     ).join('\n');
 
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${import.meta.env.VITE_GEMINI_KEY}`, {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": import.meta.env.VITE_ANTHROPIC_KEY,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: `Generate short, friendly reminder email bodies for these action items from meeting "${activeData.title}":\n${reminderList}\n\nReturn JSON array: [{"email":"...","subject":"...","body":"..."}]` }] }],
-          generationConfig: { temperature: 0.2, maxOutputTokens: 800 },
+          model: "claude-sonnet-4-6",
+          max_tokens: 500,
+          messages: [{ role:"user", content:`Generate short, friendly reminder email bodies (2-3 sentences each) for these action items from meeting "${activeData.title}":\n${reminderList}\n\nReturn JSON array: [{"email":"...","subject":"...","body":"..."}]` }],
         }),
       });
       const data = await response.json();
-      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      const raw = data.content?.map(b=>b.text||"").join("")||"";
       const reminders = JSON.parse(raw.replace(/\`\`\`json|\`\`\`/g,"").trim());
       // Open mailto links for each reminder
       reminders.forEach((r, i) => {
@@ -801,19 +807,26 @@ export default function BriefLoop() {
     setView("processing"); setProcStep(0);
     const stepInterval = setInterval(() => setProcStep(s => Math.min(s+1, PROC_STEPS.length-1)), 600);
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${import.meta.env.VITE_GEMINI_KEY}`, {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": import.meta.env.VITE_ANTHROPIC_KEY,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: SYSTEM_PROMPT + "\n\nMeeting title: " + (title||"Untitled meeting") + "\n\nTranscript:\n" + transcript }] }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 1500 },
+          model: "claude-sonnet-4-6",
+          max_tokens: 1000,
+          system: SYSTEM_PROMPT,
+          messages: [{ role:"user", content:`Meeting title: ${title||"Untitled meeting"}\n\nTranscript:\n${transcript}` }],
         }),
       });
       clearInterval(stepInterval);
       setProcStep(PROC_STEPS.length-1);
       if (!response.ok) throw new Error(`API error ${response.status}`);
       const data = await response.json();
-      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      const raw = data.content?.map(b=>b.text||"").join("")||"";
       const parsed = JSON.parse(raw.replace(/```json|```/g,"").trim());
       const meetingTitle = title || parsed.attendees?.slice(0,2).join(" & ")+" sync" || "Meeting recap";
 
